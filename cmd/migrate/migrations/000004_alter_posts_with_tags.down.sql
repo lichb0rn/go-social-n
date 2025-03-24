@@ -1,0 +1,5 @@
+ALTER TABLE posts
+DROP COLUMN tag;
+
+ALTER TABLE posts
+DROP COLUMN updated_at;
