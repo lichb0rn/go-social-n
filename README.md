@@ -1,1 +1,3 @@
-# go-social-n
+# Very Simple Social Network
+
+WIP
