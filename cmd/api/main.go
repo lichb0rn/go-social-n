@@ -9,10 +9,23 @@ import (
 
 const version = "0.0.1"
 
+//	@title			Simple Social Network API
+//	@description	API for simple social network.
+
+//	@license.name	MIT
+//	@license.url	https://mit-license.org
+
+// @BasePath					/v1
+//
+// @securityDefinitions.apikey	ApiKeyAuth
+// @in							header
+// @name						Authorization
+// @description				API key authentication
 func main() {
 	cfg := config{
-		addr: env.GetString("ADDR", ":8080"),
-		env:  env.GetString("ENV", "development"),
+		addr:   env.GetString("ADDR", ":8080"),
+		env:    env.GetString("ENV", "development"),
+		apiURL: env.GetString("EXTERNAL_URL", "localhost:8080"),
 		db: dbConfig{
 			addr:         env.GetString("DB_ADDR", "postgres://user:password@localhost/social?sslmode=disable"),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),

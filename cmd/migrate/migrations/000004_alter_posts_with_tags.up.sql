@@ -1,5 +1,7 @@
-ALTER TABLE posts
-ADD COLUMN tags VARCHAR(100);
+ALTER TABLE
+  posts
+ADD
+  COLUMN tags VARCHAR(100) [];
 
 ALTER TABLE posts
 ADD COLUMN updated_at TIMESTAMP(0)
