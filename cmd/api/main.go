@@ -4,6 +4,7 @@ import (
 	"social/internal/db"
 	"social/internal/env"
 	"social/internal/store"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -32,6 +33,9 @@ func main() {
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
+		},
+		mail: mailConfig{
+			exp: time.Hour * 24 * 3,
 		},
 	}
 

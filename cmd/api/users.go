@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"social/internal/store"
@@ -50,8 +52,8 @@ type FollowUser struct {
 //	@Produce		json
 //	@Param			id	path		int		true	"User ID"
 //	@Success		204	{string}	string	"User followed successfully"
-//	@Failure		400	{object}	error "User payload missing
-//	@Failure		404	{object}	error "User not found"
+//	@Failure		400	{object}	error	"User payload missing
+//	@Failure		404	{object}	error	"User not found"
 //	@Failure		500	{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users/{id}/follow [put]
@@ -114,7 +116,40 @@ func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
 
+// ActivateUser godoc
+//
+//	@Summary		Activates/Register a user
+//	@Description	Activates/Register a user by invitaiton token
+//	@Tags			users
+//	@Produce		json
+//	@Param			token	path		string	true	"Invitation token"
+//	@Success		204		{string}	string	"User activated"
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/activate/{token} [put]
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+
+	hash := sha256.Sum256([]byte(token))
+	haskedToken := hex.EncodeToString(hash[:])
+
+	err := app.store.Users.Activate(r.Context(), haskedToken)
+	if err != nil {
+		switch err {
+		case store.ErrNotFound:
+			app.badRequestResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusNoContent, nil); err != nil {
+		app.internalServerError(w, r, err)
+	}
 }
 
 func (app *application) userContextMiddleware(next http.Handler) http.Handler {
@@ -129,7 +164,7 @@ func (app *application) userContextMiddleware(next http.Handler) http.Handler {
 		user, err := app.store.Users.GetByID(r.Context(), userID)
 		if err != nil {
 			switch {
-			case errors.Is(store.ErrNotFound, err):
+			case errors.Is(err, store.ErrNotFound):
 				app.notFound(w, r, err)
 			default:
 				app.internalServerError(w, r, err)
