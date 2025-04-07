@@ -1,0 +1,20 @@
+{{define "subject"}}Fninish Registration with SimpleSN{{end}}
+
+{{define "body"}}
+<!doctype html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width" />
+        <meta http-equiv="Content-Type" context="text/html; charset=UTF-8" />
+    </head>
+    <body>
+        <p>Hi {{.Username}}, </p>
+        <p>Thank you for registering with SimpleSN.</p>
+        <p>Please click the link below to finish your registration:</p>
+        <p><a href="{{.ActivationURL}}">{{.ActivationURL}}</a></p>
+
+        <p>Thanks,</p>
+        <p>SimpleSN team</p>
+    </body>
+</html>
+{{end}}
