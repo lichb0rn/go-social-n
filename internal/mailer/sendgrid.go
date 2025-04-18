@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"log"
 	"time"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -27,11 +26,24 @@ func NewSendgrid(apiKey string, fromEmail string) *SendGridMailer {
 	}
 }
 
-func (m *SendGridMailer) Send(templateFile string, username, email string, data any, isSanbox bool) error {
+// Send renders the given template with the given data and sends it to the given
+// email address using the given SendGrid API key.
+//
+// If isSanbox is true, it will send the email to the sandbox endpoint and
+// return a 200 status code immediately. Otherwise, it will send the email
+// to the given email address and return the status code of the SendGrid API.
+//
+// The function will retry sending the email up to maxRetries times if the
+// API returns an error. After maxRetries attempts, it will return the last error
+// encountered.
+//
+// The function returns the status code of the SendGrid API and an error if
+// the email wasn't sent successfully.
+func (m *SendGridMailer) Send(templateFile string, username, email string, data any, isSanbox bool) (int, error) {
 	// Since I don't have a sendgrid sandbox account
 	// I can't test this properly
 	if isSanbox {
-		return nil
+		return 200, nil
 	}
 
 	from := mail.NewEmail(FromName, m.fromEmail)
@@ -39,17 +51,17 @@ func (m *SendGridMailer) Send(templateFile string, username, email string, data 
 
 	tmpl, err := template.ParseFS(FS, "templates/"+templateFile)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	subject := new(bytes.Buffer)
 	if err := tmpl.ExecuteTemplate(subject, "subject", data); err != nil {
-		return nil
+		return -1, nil
 	}
 
 	body := new(bytes.Buffer)
 	if err := tmpl.ExecuteTemplate(body, "body", data); err != nil {
-		return nil
+		return -1, nil
 	}
 
 	message := mail.NewSingleEmail(from, subject.String(), to, "", body.String())
@@ -59,17 +71,14 @@ func (m *SendGridMailer) Send(templateFile string, username, email string, data 
 		},
 	}
 
+	var retryErr error
 	for i := range maxRetries {
-		res, err := m.client.Send(message)
-		if err == nil {
-			log.Printf("failed to send email %v, attempt %d of %d", email, i+1, maxRetries)
-			log.Printf("Error: %v", err)
-
+		res, retryErr := m.client.Send(message)
+		if retryErr == nil {
 			time.Sleep(time.Second * time.Duration(i+1))
 			continue
 		}
-		log.Printf("Email sent with status code %v", res.StatusCode)
-		return nil
+		return res.StatusCode, nil
 	}
-	return fmt.Errorf("failed to send email after %d attempts", maxRetries)
+	return -1, fmt.Errorf("failed to send email after %d attempts, error: %v", maxRetries, retryErr)
 }

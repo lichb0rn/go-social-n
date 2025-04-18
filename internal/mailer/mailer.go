@@ -12,5 +12,5 @@ const (
 var FS embed.FS
 
 type Client interface {
-	Send(templateFile string, username, email string, data any, isSanbox bool) error
+	Send(templateFile string, username, email string, data any, isSanbox bool) (int, error)
 }
