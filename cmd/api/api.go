@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"social/docs"
+	"social/internal/auth"
 	"social/internal/mailer"
 	"social/internal/store"
 	"time"
 
 	httpSwagger "github.com/swaggo/http-swagger"
+
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -17,10 +19,11 @@ import (
 )
 
 type application struct {
-	config config
-	store  store.Storage
-	logger *zap.SugaredLogger
-	mailer mailer.Client
+	config        config
+	store         store.Storage
+	logger        *zap.SugaredLogger
+	mailer        mailer.Client
+	authenticator auth.Authenticator
 }
 
 type config struct {
@@ -42,11 +45,18 @@ type dbConfig struct {
 
 type authConfig struct {
 	basic basicAuthConfig
+	token tokenConfig
 }
 
 type basicAuthConfig struct {
 	username string
 	password string
+}
+
+type tokenConfig struct {
+	secret string
+	exp    time.Duration
+	iss    string
 }
 
 type mailConfig struct {
@@ -87,6 +97,7 @@ func (app *application) mount() http.Handler {
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
 		r.Route("/posts", func(r chi.Router) {
+			r.Use(app.authTokenMiddleware)
 			r.Post("/", app.createPostsHandler)
 
 			r.Route("/{postID}", func(r chi.Router) {
@@ -102,7 +113,7 @@ func (app *application) mount() http.Handler {
 			r.Put("/activate/{token}", app.activateUserHandler)
 
 			r.Route("/{userID}", func(r chi.Router) {
-				r.Use(app.userContextMiddleware)
+				r.Use(app.authTokenMiddleware)
 
 				r.Get("/", app.getUserHandler)
 				r.Put("/follow", app.followUserHandler)
@@ -111,6 +122,7 @@ func (app *application) mount() http.Handler {
 			})
 
 			r.Group(func(r chi.Router) {
+				r.Use(app.authTokenMiddleware)
 				r.Get("/feed", app.getUserFeedHandler)
 			})
 
@@ -118,6 +130,7 @@ func (app *application) mount() http.Handler {
 
 		r.Route(("/authentication"), func(r chi.Router) {
 			r.Post("/register", app.registerUserHandler)
+			r.Post("/token", app.createTokenHandler)
 		})
 	})
 

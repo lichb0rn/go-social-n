@@ -1,6 +1,7 @@
 package main
 
 import (
+	"social/internal/auth"
 	"social/internal/db"
 	"social/internal/env"
 	"social/internal/mailer"
@@ -48,6 +49,11 @@ func main() {
 				username: env.GetString("AUTH_BASIC_USER", "admin"),
 				password: env.GetString("AUTH_BASIC_PASSWORD", "admin"),
 			},
+			token: tokenConfig{
+				secret: env.GetString("AUTH_TOKEN_SECRET", "supersecret"),
+				exp:    time.Hour * 24 * 3,
+				iss:    "simple-social-network",
+			},
 		},
 	}
 
@@ -69,11 +75,14 @@ func main() {
 	store := store.NewPostgresStorage(db)
 	mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
 
+	jwtAuth := auth.NewJWTAuthenticator(cfg.auth.token.secret, cfg.auth.token.iss, cfg.auth.token.iss)
+
 	app := &application{
-		config: cfg,
-		store:  store,
-		logger: logger,
-		mailer: mailer,
+		config:        cfg,
+		store:         store,
+		logger:        logger,
+		mailer:        mailer,
+		authenticator: jwtAuth,
 	}
 
 	mux := app.mount()
