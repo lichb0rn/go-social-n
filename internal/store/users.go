@@ -84,7 +84,7 @@ func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {
 	SELECT users.id, email, username, password, created_at, roles.*
 	FROM users
 	JOIN roles ON (users.role_id = roles.id)
-	WHERE users.id = $1`
+	WHERE users.id = $1 AND is_active = true`
 
 	ctx, cancel := context.WithTimeout(ctx, DBQueryTimeoutDuration)
 	defer cancel()
@@ -102,8 +102,8 @@ func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {
 		&user.CreatedAt,
 		&user.Role.ID,
 		&user.Role.Name,
-		&user.Role.Description,
 		&user.Role.Level,
+		&user.Role.Description,
 	)
 
 	if err != nil {

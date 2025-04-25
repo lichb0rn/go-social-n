@@ -684,9 +684,6 @@
                 "role": {
                     "$ref": "#/definitions/store.Role"
                 },
-                "roleID": {
-                    "type": "integer"
-                },
                 "token": {
                     "type": "string"
                 },
@@ -837,9 +834,6 @@
                 },
                 "role": {
                     "$ref": "#/definitions/store.Role"
-                },
-                "roleID": {
-                    "type": "integer"
                 },
                 "username": {
                     "type": "string"

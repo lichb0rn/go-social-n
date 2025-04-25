@@ -7,6 +7,7 @@ import (
 	"social/internal/auth"
 	"social/internal/mailer"
 	"social/internal/store"
+	"social/internal/store/cache"
 	"time"
 
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -24,6 +25,7 @@ type application struct {
 	logger        *zap.SugaredLogger
 	mailer        mailer.Client
 	authenticator auth.Authenticator
+	cache         cache.Storage
 }
 
 type config struct {
@@ -34,6 +36,7 @@ type config struct {
 	frontendURL string
 	mail        mailConfig
 	auth        authConfig
+	cache       cacheConfig
 }
 
 type dbConfig struct {
@@ -41,6 +44,13 @@ type dbConfig struct {
 	maxOpenConns int
 	maxIdleConns int
 	maxIdleTime  string
+}
+
+type cacheConfig struct {
+	addr     string
+	password string
+	db       int
+	enabled  bool
 }
 
 type authConfig struct {
@@ -80,9 +90,7 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Use(cors.Handler(cors.Options{
-		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
-		AllowedOrigins: []string{"https://*", "http://*"},
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},

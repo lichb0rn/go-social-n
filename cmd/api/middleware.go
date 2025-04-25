@@ -80,7 +80,7 @@ func (app *application) authTokenMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := app.store.Users.GetByID(r.Context(), userId)
+		user, err := app.getUser(r.Context(), userId)
 		if err != nil {
 			app.unauthorizedResponse(w, r, err)
 			return
@@ -122,4 +122,29 @@ func (app *application) checkRolePrecedence(ctx context.Context, user *store.Use
 	}
 
 	return user.Role.Level >= role.Level, nil
+}
+
+func (app *application) getUser(ctx context.Context, userId int64) (*store.User, error) {
+	if !app.config.cache.enabled {
+		return app.store.Users.GetByID(ctx, userId)
+	}
+
+	user, err := app.cache.Users.Get(ctx, userId)
+	if err == nil {
+		app.logger.Infow("cache miss", "userId", userId)
+	}
+
+	if user != nil {
+		return user, nil
+	}
+
+	dbUser, err := app.store.Users.GetByID(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := app.cache.Users.Set(ctx, dbUser); err != nil {
+		app.logger.Error("failed to set user in cache", err)
+	}
+	return dbUser, nil
 }

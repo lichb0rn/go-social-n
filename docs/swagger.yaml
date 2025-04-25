@@ -68,8 +68,6 @@ definitions:
         type: boolean
       role:
         $ref: '#/definitions/store.Role'
-      roleID:
-        type: integer
       token:
         type: string
       username:
@@ -169,8 +167,6 @@ definitions:
         type: boolean
       role:
         $ref: '#/definitions/store.Role'
-      roleID:
-        type: integer
       username:
         type: string
     type: object

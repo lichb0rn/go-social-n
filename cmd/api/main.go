@@ -6,8 +6,10 @@ import (
 	"social/internal/env"
 	"social/internal/mailer"
 	"social/internal/store"
+	"social/internal/store/cache"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -26,7 +28,52 @@ const version = "0.0.1"
 // @name						Authorization
 // @description				API key authentication
 func main() {
-	cfg := config{
+	cfg := loadConfig()
+
+	logger := zap.Must(zap.NewProduction()).Sugar()
+	defer logger.Sync()
+
+	db, err := db.New(
+		cfg.db.addr,
+		cfg.db.maxOpenConns,
+		cfg.db.maxIdleConns,
+		cfg.db.maxIdleTime,
+	)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer db.Close()
+	logger.Info("database connection pool established")
+
+	var redis *redis.Client
+	if cfg.cache.enabled {
+		redis = cache.NewRedisClient(cfg.cache.addr, cfg.cache.password, cfg.cache.db)
+		logger.Info("redis connection pool established")
+
+		defer redis.Close()
+	}
+
+	store := store.NewPostgresStorage(db)
+	cache := cache.NewRedisStorage(redis)
+	mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
+
+	jwtAuth := auth.NewJWTAuthenticator(cfg.auth.token.secret, cfg.auth.token.iss, cfg.auth.token.iss)
+
+	app := &application{
+		config:        cfg,
+		store:         store,
+		logger:        logger,
+		mailer:        mailer,
+		authenticator: jwtAuth,
+		cache:         cache,
+	}
+
+	mux := app.mount()
+	logger.Fatal(app.run(mux))
+}
+
+func loadConfig() config {
+	return config{
 		addr:        env.GetString("ADDR", ":8080"),
 		env:         env.GetString("ENV", "development"),
 		apiURL:      env.GetString("EXTERNAL_URL", "localhost:8080"),
@@ -36,6 +83,12 @@ func main() {
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
+		},
+		cache: cacheConfig{
+			addr:     env.GetString("REDIS_ADDR", "localhost:6379"),
+			password: env.GetString("REDIS_PASSWORD", ""),
+			db:       env.GetInt("REDIS_DB", 0),
+			enabled:  env.GetBool("REDIS_ENABLED", false),
 		},
 		mail: mailConfig{
 			exp:       time.Hour * 24 * 3,
@@ -56,35 +109,4 @@ func main() {
 			},
 		},
 	}
-
-	logger := zap.Must(zap.NewProduction()).Sugar()
-	defer logger.Sync()
-
-	db, err := db.New(
-		cfg.db.addr,
-		cfg.db.maxOpenConns,
-		cfg.db.maxIdleConns,
-		cfg.db.maxIdleTime,
-	)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	defer db.Close()
-	logger.Info("database connection pool established")
-
-	store := store.NewPostgresStorage(db)
-	mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
-
-	jwtAuth := auth.NewJWTAuthenticator(cfg.auth.token.secret, cfg.auth.token.iss, cfg.auth.token.iss)
-
-	app := &application{
-		config:        cfg,
-		store:         store,
-		logger:        logger,
-		mailer:        mailer,
-		authenticator: jwtAuth,
-	}
-
-	mux := app.mount()
-	logger.Fatal(app.run(mux))
 }
