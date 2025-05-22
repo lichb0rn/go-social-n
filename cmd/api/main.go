@@ -1,6 +1,8 @@
 package main
 
 import (
+	"expvar"
+	"runtime"
 	"social/internal/auth"
 	"social/internal/db"
 	"social/internal/env"
@@ -74,6 +76,15 @@ func main() {
 		cache:         cache,
 		rateLimiter:   rateLimiter,
 	}
+
+	// metrics
+	expvar.NewString("version").Set(version)
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
 
 	mux := app.mount()
 	logger.Fatal(app.run(mux))
