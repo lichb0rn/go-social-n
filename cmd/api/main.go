@@ -5,6 +5,7 @@ import (
 	"social/internal/db"
 	"social/internal/env"
 	"social/internal/mailer"
+	"social/internal/ratelimiter"
 	"social/internal/store"
 	"social/internal/store/cache"
 	"time"
@@ -53,6 +54,11 @@ func main() {
 		defer redis.Close()
 	}
 
+	rateLimiter := ratelimiter.NewFixedWindowLimiter(
+		cfg.rateLimiter.RequestsPerTimeFrame,
+		cfg.rateLimiter.TimeFrame,
+	)
+
 	store := store.NewPostgresStorage(db)
 	cache := cache.NewRedisStorage(redis)
 	mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
@@ -66,6 +72,7 @@ func main() {
 		mailer:        mailer,
 		authenticator: jwtAuth,
 		cache:         cache,
+		rateLimiter:   rateLimiter,
 	}
 
 	mux := app.mount()
@@ -107,6 +114,11 @@ func loadConfig() config {
 				exp:    time.Hour * 24 * 3,
 				iss:    "simple-social-network",
 			},
+		},
+		rateLimiter: ratelimiter.Config{
+			RequestsPerTimeFrame: env.GetInt("RATE_LIMITER_REQUESTS_PER_TIME_FRAME", 20),
+			TimeFrame:            time.Second * 5,
+			Enabled:              env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"social/internal/auth"
+	"social/internal/ratelimiter"
 	"social/internal/store"
 	"social/internal/store/cache"
 	"testing"
@@ -20,12 +21,18 @@ func newTestApplication(t *testing.T, cfg config) *application {
 
 	testAuth := &auth.TestAuthenticator{}
 
+	rateLimiter := ratelimiter.NewFixedWindowLimiter(
+		cfg.rateLimiter.RequestsPerTimeFrame,
+		cfg.rateLimiter.TimeFrame,
+	)
+
 	return &application{
 		logger:        logger,
 		store:         mockStore,
 		cache:         mockCache,
 		authenticator: testAuth,
 		config:        cfg,
+		rateLimiter:   rateLimiter,
 	}
 }
 

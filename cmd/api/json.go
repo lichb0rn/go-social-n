@@ -45,3 +45,9 @@ func (app *application) jsonResponse(w http.ResponseWriter, status int, data any
 
 	return writeJSON(w, status, response)
 }
+
+func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request, retryAfter string) {
+	app.logger.Warnf("rate limit exceeded", "method", r.Method, "path", r.URL.Path)
+	w.Header().Set("Retry-After", retryAfter)
+	writeJSONError(w, http.StatusTooManyRequests, "rate limit exceeded, retry after: "+retryAfter)
+}
