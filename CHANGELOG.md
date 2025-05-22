@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/lichb0rn/go-social-n/compare/v1.0.0...v1.0.1) (2025-05-22)
+
+
+### Bug Fixes
+
+* change deprecated set-output command in GitHub Actions ([afcee7c](https://github.com/lichb0rn/go-social-n/commit/afcee7c3de6d9ca5f7f6e00b2bb84a94287c31bc))
+
 ## 1.0.0 (2025-05-22)
 
 
